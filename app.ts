@@ -7,6 +7,8 @@ enum Color {
   Green
 }
 
+const Colors = ["red", "yellow", "blue", "green"];
+
 class Player {
   constructor(
     public name: string,
@@ -29,14 +31,14 @@ function shuffle<T>(array: T[]) {
 }
 
 const players = [
-  new Player("alexander", 1, 1, Color.Red),
-  new Player("cole", 2, 1, Color.Red),
-  new Player("jake", 3, 1, Color.Red),
-  new Player("josh", 4, 2, Color.Blue),
-  new Player("max", 5, 2, Color.Blue),
-  new Player("mayfield", 6, 2, Color.Blue),
-  new Player("noah", 7, 3, Color.Yellow),
-  new Player("tim", 8, 3, Color.Yellow)
+  new Player("alexander", 1, 0, Color.Red),
+  new Player("cole", 2, 0, Color.Red),
+  new Player("jake", 3, 0, Color.Red),
+  new Player("josh", 4, 1, Color.Blue),
+  new Player("max", 5, 1, Color.Blue),
+  new Player("mayfield", 6, 1, Color.Blue),
+  new Player("noah", 7, 2, Color.Yellow),
+  new Player("tim", 8, 2, Color.Yellow)
 ];
 
 function run() {
@@ -53,13 +55,30 @@ function run() {
   for (let i = 0; i < players.length; i++) {
     players[i].team = Math.floor((i * teamCount) / players.length);
   }
-  console.log("teamed:", players);
+  console.log("teamed:", JSON.stringify(players, null, 2));
 
-  for (const option of permutations(
+  let bestOptions = [];
+
+  for (const optionColors of permutations(
     [Color.Red, Color.Yellow, Color.Blue, Color.Green],
     teamCount
   )) {
-    console.log(option)
+    const option = { colors: optionColors, totalChanges: 0, playerChanges: 0 };
+    for (const player of players) {
+      const distance = calculateColorDistance(
+        player.color,
+        option.colors[player.team]
+      );
+      if (distance > 0) {
+        option.totalChanges += distance;
+        option.playerChanges += 1;
+      }
+    }
+    console.log(
+      option.colors.map(it => Colors[it]),
+      option.totalChanges,
+      option.playerChanges
+    );
   }
 
   function recurse(availableTeams: Color[]) {
