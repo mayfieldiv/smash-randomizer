@@ -1,4 +1,6 @@
+import { immerable, produce, Patch } from "immer";
 import { permutations } from "iter-tools/es2018";
+import { firstBy } from "thenby";
 
 enum Color {
   Red,
@@ -10,6 +12,7 @@ enum Color {
 const Colors = ["red", "yellow", "blue", "green"];
 
 class Player {
+  [immerable] = true;
   constructor(
     public name: string,
     public position: number,
@@ -51,20 +54,41 @@ function run() {
 
   console.log("teamCount:", teamCount);
   shuffle(players);
-  // console.log("shuffled:", players);
   for (let i = 0; i < players.length; i++) {
     players[i].team = Math.floor((i * teamCount) / players.length);
   }
   console.log("teamed:", JSON.stringify(players, null, 2));
 
-  let bestOptions = [];
+  let options = [];
 
   for (const optionColors of permutations(
     [Color.Red, Color.Yellow, Color.Blue, Color.Green],
     teamCount
   )) {
-    const option = { colors: optionColors, totalChanges: 0, playerChanges: 0 };
+    const option = {
+      colors: optionColors,
+      totalChanges: 0,
+      playerChanges: 0,
+      patches: [] as Patch[][]
+    };
     for (const player of players) {
+      let next = player;
+      let playerPatches: Patch[] = [];
+      while (next.color !== option.colors[next.team])
+        next = produce(
+          next,
+          draft => {
+            draft.color = (draft.color + 1) % 4;
+          },
+          patches => {
+            playerPatches.push(...patches);
+          }
+        );
+
+      if (playerPatches.length > 0) {
+        option.patches.push(playerPatches);
+      }
+
       const distance = calculateColorDistance(
         player.color,
         option.colors[player.team]
@@ -74,12 +98,23 @@ function run() {
         option.playerChanges += 1;
       }
     }
+    options.push(option);
+  }
+
+  options.sort(
+    firstBy(it => it.patches.length).thenBy(it =>
+      (it.patches as Patch[][]).reduce((total, it) => total + it.length, 0)
+    )
+  );
+
+  options.forEach(option =>
     console.log(
       option.colors.map(it => Colors[it]),
+      option.patches,
+      option.playerChanges,
       option.totalChanges,
-      option.playerChanges
-    );
-  }
+    )
+  );
 
   function recurse(availableTeams: Color[]) {
     return [];
